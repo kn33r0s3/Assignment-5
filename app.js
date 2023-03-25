@@ -148,7 +148,7 @@ var imgName;
 var imgErr;
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, './public/resources');
+        cb(null, '/resources/');
     },
     filename: (req, file, cb) => {
         imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
@@ -173,7 +173,7 @@ const upload = multer({
         if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)$/)) {
             imgErr = 'Only image files i.e (png, jpg, jpeg, gif) are allowed!. So you better do things right next time!';
         }
-        fs.readdir('./public/resources/', function(err,data){
+        fs.readdir('/resources/', function(err,data){
             if (err) {console.log(err)};
             console.log(data);
             for(var i=0; i<data.length; i++)
