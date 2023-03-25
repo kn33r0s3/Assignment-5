@@ -157,7 +157,7 @@ var imgErr;
 // });
 const storage = multerS3({
     s3: s3,
-    bucket: 'cyclic-enchanting-tuna-pumps-ca-central-1/uploads',
+    bucket: 'cyclic-charming-fox-kilt-us-east-1/uploads',
     acl: 'public-read', //comment this line if you not enable access object 
     key: (req, file, cb) => {
         imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
