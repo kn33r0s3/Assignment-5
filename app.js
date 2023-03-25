@@ -173,11 +173,12 @@ const upload = multer({
         if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)$/)) {
             imgErr = 'Only image files i.e (png, jpg, jpeg, gif) are allowed!. So you better do things right next time!';
         }
-        fs.readdir('./public/resources/', function(err,list){
-            for(var i=0; i<list.length; i++)
+        fs.readdir('./public/resources/', function(err,data){
+            console.log(data);
+            for(var i=0; i<data.length; i++)
             {
 
-                if(list[i] === imgName){
+                if(data[i] === imgName){
                     imgErr = 'Please provide an Unique Image Name!'
                 }
             }
