@@ -1,0 +1,322 @@
+<div class="d-flex flex-column bg-custom-two m-4 p-4">
+    <h1 class="my-color my-50">Welcome Admin!</h1>
+    <h4>
+        Name: {{Name}}<br>
+        Email: {{Email}}<br>
+        Username: {{UserName}}
+    </h4>
+</div>
+<div class="d-flex flex-column bg-custom">
+
+
+{{!-- MANAGE MINI ARTICLES --}}
+
+<div class="bg-custom m-4">
+
+        <h2 class="my-color m-2">Manage Intro-Articles</h2>
+    <p>Those are your introduction articles which are displayed on the blog page with a read more button of their own!</p>
+    <table class="container table-responsive{-sm|-md|-lg|-xl} bg-custom-two text-light">
+        <thead>
+            <tr class="my-color bg-bar text-dark">
+                <th scope="col">S.N.</th>
+                <th scope="col">Title</th>
+                <th scope="col">Description</th>
+                <th scope="col">Preview / Edit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each introArticles}}
+            <tr>
+                <th scope="row">{{@index}}</th>
+                <th scope="row" class="p-4">{{this.title}}</th>
+                <td>{{this.desc}}</td>
+                <td>
+                    <div class="my-auto d-flex flex-row">
+                        <form action="/manage" method="post">
+                            <input style="display:none;" name = "idmini" value = "{{this.id}}">
+                            <button type="submit" class="btn btn-sm btn-primary m-1" data-backdrop="static" data-keyboard="false">
+                            Manage
+                            </button>
+                        </form>
+                        {{!-- <form action="/delete" class = "form-group" method="post">
+                            <input style="display:none;" name = "miniid" value = "{{this.id}}">
+                            <button type="submit" class="btn btn-sm btn-danger m-1">Delete</button> 
+                        </form> --}}
+                    </div>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+       <h6 class="fit-con mt-2 mb-4 m-auto p-2">Click here to add a mini article:
+        <form action="/manage" class="m-1"  method="post">
+            <input style="display:none;" name = "add" value = "mini">
+            <button type="submit" id = "addmain" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#myModal">
+                Add New
+            </button>
+        </form>
+</div>
+
+
+{{!-- MANAGE ARTICLES --}}
+
+<div class="bg-custom m-4">
+
+        <h2 class="my-color m-2">Manage Main Articles</h2>
+        <p>Those are your main full articles which are displayed on the article page with full details of their own!</p>
+
+    <table class="container table-responsive{-sm|-md|-lg|-xl} bg-custom-two text-light">
+        <thead>
+            <tr class="my-color bg-bar text-dark">
+                <th scope="col">S.N.</th>
+                <th scope="col">Title</th>
+                <th scope="col">Description</th>
+                <th scope="col">Preview / Edit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each mainArticles}}
+            <tr>
+                <th scope="row">{{@index}}</th>
+                <th scope="row" class="p-4">{{this.topic}}</th>
+                <td>{{this.desc}}</td>
+                <td>
+                    <div class="my-auto d-flex flex-row">
+                        <form action="/manage" method="post">
+                            <input style="display:none;" name = "idmain" value = "{{this._id}}">
+                            <button type="submit" class="btn btn-sm btn-primary m-1" data-backdrop="static" data-keyboard="false">
+                            Manage
+                            </button>
+                        </form>
+                        {{!-- <form action="/delete" class = "form-group" method="post">
+                            <input style="display:none;" name = "mainid" value = "{{this._id}}">
+                            <button type="submit" class="btn btn-sm btn-danger m-1">Delete</button> 
+                        </form> --}}
+                    </div>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    
+       <h6 class="fit-con mt-2 mb-4 m-auto p-2">Click here to add a main article:
+        <form action="/manage" class="m-1" method="post">
+                <input style="display:none;" name = "add" value = "main">
+                <button type="submit" id = "addmain" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#myModal">
+                    Add New
+                </button>
+        </form>
+    </h6> 
+</div>
+
+{{!-- edit modal --}}
+{{#if displayModal}}
+    <div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModal" aria-hidden="true">
+    <div class="modal-dialog bg-custom-two modal-xl">
+        <div class="modal-content bg-custom-two p-2">
+            <!-- Modal Header -->
+            <div class="modal-header border border-primary bg-bar p-1 m-2">
+                <h5 class="modal-title text-dark mt-2">{{#if addModal}}Create {{#if addsano}}mini {{else}}main {{/if}}article{{else}}Edit {{#if sano}}mini{{else}}main{{/if}} Article{{/if}}</h5>
+                <form action = "/manage" method="post">
+                    <input style="display:none;" name = "cancel" value = "true">
+                    <button type="submit" class="btn btn-primary p-2 border border-primary"><h6 class="fit-con">Cancel</h6></button>
+                </form>
+            </div>
+            <!-- Modal body -->
+            <div class="modal-body p-2">
+            <form action="/edit" method="post" enctype="multipart/form-data">
+                {{#if sano}}
+
+                 {{#each introArticles}}
+             
+                    {{#compare this.id ../sano}}
+
+                                <div class="form-group p-1">
+                                    <label for="title">Title</label>
+                                    <input type="text" name = "title" class="form-control" value="{{this.title}}" required>
+                                </div>
+                                <div class="form-group p-1">
+                                    <label for="description2">Description</label>
+                                    <textarea class="form-control" name = "desc" rows="4" required>{{this.desc}}</textarea>
+                                </div>
+                                <div class="form-group p-1">
+                                    <input style="display:none;" name = "idmini" value = "{{this.id}}">
+                                    <button type="submit" class="btn btn-primary container" ><b>Save Changes</b></button>
+                                </div>
+                    {{/compare}}
+                    {{/each}}
+
+                {{else}}
+                    {{#each mainArticles}}      
+                    {{#compare this._id ../thulo}}
+                                <div class="form-group p-1">
+                                    <label for="badge">Badge</label>
+                                    <input type="text" name = "badge" class="form-control" value="{{this.badge}}">
+                                </div>
+                                <div class="form-group p-1">
+                                    <label for="title">Title</label>
+                                    <input type="text" name="title" class="form-control" value="{{this.topic}}" required>
+                                </div>
+
+                                    <div class="form-group p-1">
+                                    <label for="tag">Tag</label>
+                                    <input type="text" name = "tag" class="form-control" value="{{this.tag}}">
+                                </div>
+                                <div class="form-group p-1">
+                                    <label for="date">Published Date (MM/DD/YYYY)</label>
+                                    <input type="text" name = "date" class="form-control" value="{{this.date}}" required>
+                                </div>
+                                <div class="form-group p-1">
+                                    <label for="description">Description</label>
+                                    <textarea name = "desc" class="form-control" rows="4" required>
+
+                                        {{#each this.desc}}
+                                        {{{this}}}
+                                        {{/each}}
+                                        
+                                    </textarea>
+                                </div>
+
+                                <div class="form-group p-1">
+                                    <label for="semititle">Semi Title</label>
+                                    <input name = "semititle" type="text" class="form-control" value="{{this.semitopic}}">
+                                </div>
+
+                                <div class="form-group p-1">
+                                    <label for="semidesc">Semi Description</label>
+                                    <textarea name = "semidesc" class="form-control" rows="4">
+                                        {{#each this.semidesc}}
+                                        {{{this}}}
+                                        {{/each}}
+                                    </textarea>
+                                </div>
+                                <div class="form-group p-1">
+                                    <input style="display:none;" name = "idmain" value = "{{this._id}}">
+                                    <button type="submit" class="btn btn-primary container" ><b>Save Changes</b></button>
+                                </div>
+                    {{/compare}}
+                    {{/each}}
+                {{/if}}
+
+                {{#if addModal}}
+                    {{#if addsano}}
+                        <div class="form-group p-1">
+                            <label for="title">Title</label>
+                            <input type="text" name = "title" class="form-control" required>
+                        </div>
+                        <div class="form-group p-1">
+                            <label for="description2">Description</label>
+                            <textarea class="form-control" name = "desc" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group p-1">
+                            <label for="imagename">Name of image</label>
+                            <input type="text" name = "imagename" class="form-control" required>
+                        </div>
+                        <div class="form-group d-flex flex-column">
+                            <label for="photo">Choose image to upload (PNG, JPG, JPEG, GIF)</label>
+                            <input style="display:none;" name = "idmini" value="true">
+
+                            <input 
+                            type="file"
+                            id="photo"
+                            class="form-control bg-custom-two my-color" 
+                            name="photo"
+                            accept="image/apng, image/jpeg, image/png, image/jpg, image/gif" required>
+                        </div>
+
+                        <div class="form-group p-1">
+                            <button type="submit" class="btn btn-primary container m-2" >Submit mini Article</button>
+                        </div>
+
+                    {{/if}}
+
+                    {{#if addthulo}}
+
+                        <div class="form-group p-1">
+                            <label for="badge">Badge</label>
+                            <input type="text" name = "badge" class="form-control">
+                        </div>
+                        <div class="form-group p-1">
+                            <label for="title">Title</label>
+                            <input type="text" name="title" class="form-control" required>
+                        </div>
+                            <div class="form-group p-1">
+                            <label for="tag">Tag</label>
+                            <input type="text" name = "tag" class="form-control">
+                        </div>
+                        <div class="form-group p-1">
+                            <label for="date">Published Date (MM/DD/YYYY)</label>
+                            <input type="text" name = "date" class="form-control" required>
+                        </div>
+                        <div class="form-group p-1">
+                            <label for="description">Description</label>
+                            <textarea name = "desc" class="form-control" rows="4" required>
+                            </textarea>
+                        </div>
+
+                        <div class="form-group p-1">
+                            <label for="semititle">Semi Title</label>
+                            <input name = "semititle" type="text" class="form-control">
+                        </div>
+
+                        <div class="form-group p-1">
+                            <label for="semidesc">Semi Description</label>
+                            <textarea name = "semidesc" class="form-control" rows="4">
+                            </textarea>
+                        </div>
+                        <div class="form-group p-1">
+                            <label for="imagename">Name of image</label>
+                            <input type="text" name = "imagename" class="form-control" required>
+                        </div>
+                        <div class="form-group d-flex flex-column">
+                            <label for="photo">Choose image to upload (PNG, JPG, JPEG, GIF)</label>
+                            <input style="display:none;" name = "idmain" value="true">
+
+                            <input 
+                            type="file"
+                            id="photo"
+                            class="form-control bg-custom-two my-color" 
+                            name="photo"
+                            accept="image/apng, image/jpeg, image/png, image/jpg, image/gif" required>
+                        </div>
+
+                        <div class="form-group p-1">
+                            <button type="submit" class="btn btn-primary container m-2" >Submit main Article</button>
+                        </div>
+                    {{/if}}
+
+                {{/if}}
+            </form>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+{{/if}}
+
+</div>
+
+<script>
+    {{#if imgErr}}
+        alert("{{imgErr}}");
+    {{/if}}
+
+    $(window).on('load',function () {
+    $('#myModal').modal({
+        backdrop: 'static',
+        keyboard: false
+    });
+    });
+    document.addEventListener("DOMContentLoaded", function (event) {
+        var scrollpos = sessionStorage.getItem('scrollpos');
+        if (scrollpos) {
+            window.scrollTo(0, scrollpos);
+            sessionStorage.removeItem('scrollpos');
+        }
+    });
+
+    window.addEventListener("beforeunload", function (e) {
+        sessionStorage.setItem('scrollpos', window.scrollY);
+    });
+</script>

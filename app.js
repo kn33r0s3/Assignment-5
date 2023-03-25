@@ -1,0 +1,639 @@
+const express = require("express");
+const exphbs = require('express-handlebars');
+const bodyParser = require("body-parser");
+const multer = require('multer');
+multerS3 = require('multer-s3');
+const fs = require('fs');
+
+const clientSessions = require("client-sessions");
+const Bcrypt = require("bcryptjs");
+
+const modules = require('./my-modules/modules');
+
+const port = 8007;
+const app = express();
+
+//cyclic aws s3
+const AWS = require("aws-sdk/clients/s3");
+const s3 = new AWS();
+
+/// mongoose
+const mongoose = require('mongoose');
+const { json } = require("body-parser");
+const myPass = encodeURIComponent("Nirazdon45$");
+const db = mongoose.createConnection(`mongodb+srv://kneerose:${myPass}@senecaweb.bi5o8b1.mongodb.net/web322_week8?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true });
+
+const blogPage = mongoose.createConnection(`mongodb+srv://kneerose:${myPass}@senecaweb.bi5o8b1.mongodb.net/blogPage?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true });
+const articlePage = mongoose.createConnection(`mongodb+srv://kneerose:${myPass}@senecaweb.bi5o8b1.mongodb.net/articlePage?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true });
+
+
+//BLOG COLLECTIONS DEFINE
+const blogSch = new mongoose.Schema({
+    "name": String,
+    "desc": String,
+    "tipname": String,
+    "tipslist": {
+        "tipA" : {
+            "name": String,
+            "tip": String
+        },
+        "tipB" : {
+            "name": String,
+            "tip": String
+        },
+        "tipC" : {
+            "name": String,
+            "tip": String
+        }
+    },
+    "more": [{
+        "id": String,
+        "title": String,
+        "desc": String,
+        "image": String
+    }], 
+    
+});
+const artSch = new mongoose.Schema({
+    "topic": String,
+    "badge": String,
+    "date": String,
+    "tag": String,
+    "desc": [{
+        "type": String
+    }],
+    "semidesc": [{
+        "type": String
+    }],
+    "semitopic": String,
+    "image": String
+});
+const globalwhatsnew = blogPage.model('blogPage', new mongoose.Schema({}), 'globalwhatsnew');
+const blog = blogPage.model('blogPage', blogSch, 'blog');
+const features = blogPage.model('blogPage', new mongoose.Schema({}), 'features');
+const miniBlog = blogPage.model('blogPage', new mongoose.Schema({}), 'miniBlog');
+const orders = blogPage.model('blogPage', new mongoose.Schema({}), 'orders');
+
+// ARTICLE COLLECTIONS DEFINE
+const article = articlePage.model('articlePage', artSch, 'article');
+const comments = articlePage.model('articlePage', new mongoose.Schema({}), 'comments');
+
+
+const regSchema = new mongoose.Schema({
+    "fname": String,
+    "lname":String,
+    "username": {
+        "type": String,
+        "unique": true
+    },
+    "email": {
+        "type": String,
+        "unique": true
+    },
+    "phone": Number,
+    "password":  String,
+    "admin": {
+        "type": Boolean,
+        "default": false
+    }
+});
+
+const registerDb = db.model("registerData", regSchema);
+
+
+app.use(express.static('public'));
+
+app.use(bodyParser.urlencoded({ extended: true }));
+
+function ensureLogin(req, res, next) {
+    if (!req.session.user) {
+      res.redirect("/login");
+    } else {
+      next();
+    }
+}
+
+app.use(clientSessions({
+    cookieName: "session",
+    secret: "kneerosehosting_69420XdLOLyousuck", 
+    duration: 30 * 60 * 1000,
+    activeDuration: 1000 * 60 
+}));
+  
+app.use(express.urlencoded({ extended: false }));
+  
+app.set('view engine', 'hbs');
+
+app.engine('hbs', exphbs.engine({
+    extname: 'hbs',
+    helpers: { 
+        newVar: function(varName, varValue, options){
+            options.data.root[varName] = varValue;
+        },
+        compare: function(v1, v2, options){
+            v1 = v1.toString();
+
+            if (v1 === v2){
+                return options.fn(this);
+            }
+        }
+    },
+    layoutsDir: __dirname + "/views/layouts",
+    defaultLayout: 'index'
+}))
+
+//multer
+var imgName;
+var imgErr;
+// const storage = multer.diskStorage({
+//     destination: (req, file, cb) => {
+//         cb(null, './public/resources');
+//     },
+//     filename: (req, file, cb) => {
+//         imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
+//         cb(null, imgName)
+//     }
+// });
+const storage = multerS3({
+    s3: s3,
+    bucket: 'cyclic-enchanting-tuna-pumps-ca-central-1/uploads',
+    acl: 'public-read', //comment this line if you not enable access object 
+    key: (req, file, cb) => {
+        imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
+        cb(null, imgName)
+    }
+})
+
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
+
+        if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)$/)) {
+            imgErr = 'Only image files i.e (png, jpg, jpeg, gif) are allowed!. So you better do things right next time!';
+        }
+        fs.readdir('./public/resources/', function(err,list){
+            for(var i=0; i<list.length; i++)
+            {
+
+                if(list[i] === imgName){
+                    imgErr = 'Please provide an Unique Image Name!'
+                }
+            }
+            if(imgErr){
+                cb(null, false)
+            }else{
+                cb(null, true)
+            } 
+        });
+
+    }
+});
+
+
+app.get("/dashboard", ensureLogin, async (req, res) => {
+
+    var modal = false;
+    var addmodal = false;
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+
+    //INTRO ARTICLES FETCH - from blog collections
+    var blogs = await modules.fetchOne(blog);
+
+    //FULL ARTICLES FETCH
+    var articleFetch = await modules.fetchMany(article);
+    let user = await req.session.user;
+    if(user.admin === true){
+        var addsano = false;
+        var addthulo = false;
+        var imgErrDash;
+
+        if(req.session.error){
+            if(req.session.error.error){
+                imgErrDash = req.session.error.msg;
+                req.session.error = {
+                    error: false,
+                    msg: ""
+                }
+            }
+        }
+        
+        if (req.session.add){
+            if(req.session.add.mini || req.session.add.main){
+            addmodal = true;
+            if(req.session.add.main){
+                addthulo = true;
+                modal = true;
+            }
+            if(req.session.add.mini){
+                addsano = true;
+                modal = true;
+            }
+        }
+        }
+
+
+        req.session.add ={
+            mini : false,
+            main : false
+        }
+        var thulo = req.query.main_id;
+        var sano = req.query.mini_id;
+        
+        if(thulo || sano){
+            modal = true;
+        }
+        res.render('admin', {imgErr: imgErrDash, displayModal: modal,thulo:thulo, sano: sano, addModal: addmodal, addsano: addsano, addthulo: addthulo, dbNav: true, loggedIn: true, globalwhatsnew: globalwhatsnewFetch, introArticles: blogs.more, mainArticles: articleFetch, UserName: user.username, Name: user.name, Email: user.email})
+    }else{
+        res.render('user', {dbNav: true, loggedIn: true, globalwhatsnew: globalwhatsnewFetch, UserName: user.username, Name: user.name, Email: user.email});
+    }
+})
+
+app.post("/manage", async (req, res) => {
+    if(req.body.cancel){
+        res.redirect("/dashboard");
+    }
+    var idmain = req.body.idmain;
+    var idmini = req.body.idmini;
+    req.session.add = {
+        main: false,
+        mini: false
+    }
+    switch(req.body.add){
+        case "mini":
+            req.session.add.mini = true;
+            res.redirect("/dashboard");
+            break;
+        case "main":
+            req.session.add.main = true;
+            res.redirect("/dashboard");
+            break;
+    }
+
+    if (idmain){
+        res.redirect("/dashboard?main_id=" + idmain);
+    }
+    if(idmini){
+        res.redirect("/dashboard?mini_id=" + idmini)
+    }
+})
+
+
+app.post("/edit", upload.single('photo'), async (req, res) =>{
+//
+var image = imgName;
+if(imgErr){
+    req.session.error = {
+        error: true,
+        msg: imgErr
+    }
+}
+//
+    if (req.body.idmini){
+        var title = req.body.title;
+        var desc = req.body.desc;
+        var id;
+        if(req.body.idmini === "true"){
+            if(!imgErr){
+                var blogs = await modules.fetchOne(blog);
+                id = (blogs.more.length).toString();
+
+                let data = {id: id, title: title, desc: desc, image: image}
+                let a = await blog.updateOne(
+                    { _id: '6376fdca86704c997abd4d49' }, 
+                    { $push: { more: data } }
+                );
+                console.log(a);
+                res.redirect("/dashboard");
+            }
+            else{
+                res.redirect("/dashboard");
+            }
+        }else{
+            id = req.body.idmini;
+            var a = await blog.updateOne({'more.id': id}, {'$set': {
+                'more.$.title': title,
+                'more.$.desc': desc
+            }})
+            console.log(a);
+            res.redirect("/dashboard");
+        }
+
+    }
+    if (req.body.idmain){
+        var tag = req.body.tag;
+        var topic = req.body.title;
+        var badge = req.body.badge;
+        var date = req.body.date;
+        var desc = modules.desctoArray(req.body.desc);
+        var semidesc = modules.desctoArray(req.body.semidesc);
+        var semitopic = req.body.semititle;
+
+
+        var newArticle = {
+            topic: topic,
+            badge: badge,
+            date: date,
+            tag: tag,
+            desc: desc,
+            semidesc: semidesc,
+            semitopic: semitopic,
+            image: image
+        }
+
+
+
+        if(req.body.idmain === "true"){
+            if(!imgErr){
+                let createArticle = new article(newArticle).save((e, data) => {
+                    if (e) {
+                        console.log(e);
+                    } else {
+                        console.log("Article Created:\n\t" + data);
+                        res.redirect("/dashboard");
+                    }
+            
+                })
+            }else{
+                res.redirect("/dashboard");
+            }
+        }else{
+            var id = req.body.idmain;
+            var a = await article.updateOne({'_id': id}, {'$set': {
+            'topic': topic,
+            'badge': badge,
+            'date': date,
+            'desc': desc,
+            'semidesc': semidesc,
+            'tag': tag,
+            'semitopic': semitopic
+            }});
+            console.log(a);
+            res.redirect("/dashboard");
+        }
+
+    }
+
+});
+
+
+app.get("/:var(blog|home)?", async (req, res) => {
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+
+    //BLOG COLLECTIONS FETCH
+    var blogFetch = await modules.fetchOne(blog);
+    var miniBlogFetch = await modules.fetchOne(miniBlog);
+    var ordersFetch = await modules.fetchOne(orders);
+    var featuresFetch = await modules.fetchMany(features);
+    var loggedIn;
+    var user = await req.session.user;
+    if(user){
+        loggedIn = true;
+    }
+
+    res.render('blog', {
+       loggedIn: loggedIn, blogNav: true, globalwhatsnew: globalwhatsnewFetch, blog: blogFetch, miniBlog: miniBlogFetch, orders: ordersFetch, features:featuresFetch
+    })
+});
+
+app.get("/login", async (req, res) => {
+    var user = await req.session.user;
+    if (user){
+        res.redirect("/dashboard");
+    }
+    else{
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+    res.render('login', {
+        loginNav: true, globalwhatsnew: globalwhatsnewFetch
+    })
+    }
+});
+
+app.post("/login", async (req, res) => {
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+
+    var username = req.body.uname1;
+    var password = req.body.pwd1;
+
+    if (username && password) {
+
+        if(modules.spCheck(username)){
+            var userErrorMsg = "Your UserName can't have special characters or spaces!";
+            res.render('login', { loginNav: true, globalwhatsnew: globalwhatsnewFetch, UserErrorMsg: userErrorMsg, UserName: username, Password: password });
+            }
+         else {
+
+            
+            const logdata = await registerDb.findOne({"username": username});
+            if(logdata){
+                if(Bcrypt.compareSync(password, logdata.password)){
+                    req.session.user = {
+                        username: logdata.username,
+                        email: logdata.email,
+                        name: (logdata.fname + " " + logdata.lname),
+                        admin: logdata.admin
+                    };
+                    res.redirect('/dashboard');
+                }
+                else{
+                    var pwdErrorMsg = "The password you entered is incorrect!";
+                    res.render('login', { loginNav: true, globalwhatsnew: globalwhatsnewFetch, PwdErrorMsg: pwdErrorMsg, UserName: username, Password: password });
+                }
+            }
+            else{
+                var ErrorMsg = "Incorrect username or password!";
+                res.render('login', { loginNav: true, globalwhatsnew: globalwhatsnewFetch, ErrorMsg: ErrorMsg, UserName: username, Password: password });
+            }
+                            
+
+        }
+    } 
+    else if (!username && !password){
+        var ErrorMsg = "Please enter your username and password!";
+        res.render('login', { loginNav: true, globalwhatsnew: globalwhatsnewFetch, ErrorMsg: ErrorMsg});
+    }
+    
+    else {
+        if(!username){
+            var userErrorMsg = "Please enter your username!";
+            res.render('login', { loginNav: true, globalwhatsnew: globalwhatsnewFetch, UserErrorMsg: userErrorMsg, Password: password });
+        }
+
+        if(!password){
+            var pwdErrorMsg = "Please enter your password!";
+            res.render('login', { loginNav: true, globalwhatsnew: globalwhatsnewFetch, PwdErrorMsg: pwdErrorMsg, UserName: username});
+        }
+
+    } 
+});
+
+app.get("/article", async (req, res) => {
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+
+    //ARTICLE COLLECTIONS FETCH
+    var articleFetch = await modules.fetchMany(article);
+    var commentsFetch = await modules.fetchMany(comments);
+
+    var loggedIn;
+    var user = await req.session.user;
+    if(user){
+        loggedIn = true;
+    }
+
+    res.render('read_more', {
+        loggedIn: loggedIn, articleNav: true, globalwhatsnew: globalwhatsnewFetch, article: articleFetch, comments: commentsFetch
+    })
+});
+
+app.get("/register", async (req, res) => {
+    var user = await req.session.user;
+    if (user){
+        res.redirect("/dashboard");
+    }else{
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+    res.render('register', {
+        registerNav: true, globalwhatsnew: globalwhatsnewFetch
+    })
+    }
+});
+
+app.post("/register", async (req, res) => {
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+
+    var fname = req.body.fname1;
+    var lname = req.body.lname1;
+    var username = req.body.uname2;
+    var email = req.body.email1;
+    var phone = req.body.phonenum;
+    var password = req.body.pwd2;
+    var nameErr;
+    var unameErr;
+    var emailErr;
+    var numErr;
+    var passErr;
+
+
+    var registerData = {
+        fname: fname,
+        lname: lname,
+        username: username,
+        email: email,
+        phone: phone,
+        password: password
+    }
+
+
+
+    var nullErr;
+    var keys = Object.keys(registerData);
+
+    // null check
+    keys.forEach(key => {
+        var value = registerData[key];
+        if(!value){
+            nullErr = "Please fill out all the fields!";
+        }
+    })
+
+    keys.forEach((key) => {
+        var value = registerData[key];
+        switch(key){
+            case 'fname', 'lname':
+                if(modules.spCheck(value)){
+                    nameErr = "Name can not have any special characters!";
+                }
+            break;
+
+            case 'username':
+                if (modules.spCheck(value)){ 
+                    unameErr = "Username can not have any special characters!";
+                }    
+            break;
+
+            case 'email':
+                if(!(modules.emailCheck(value))){
+                    emailErr = "The email you provided is invalid!";
+                }
+            break;
+
+            case 'phone':
+                if(!modules.phoneCheck(value)){
+                    numErr = "Phone number can not have anything but numbers!";
+                }
+            break;
+
+            case 'password':
+                if(!modules.pwdCheck(value)){
+                    passErr = "Password must include at least 1 character of the following: uppercase letter, lowercase letter, number and special character";
+                }
+            break;
+        }
+    })
+
+    const lado = registerDb.findOne({"username": username});
+    const puti = await lado.exec();
+    if(puti){
+        unameErr = "This username is already in use!";
+    }
+
+    const gula = registerDb.findOne({"email": email});
+    const chak = await gula.exec();
+    if(chak){
+        emailErr = "This email is already in use!";
+    }
+  
+    var Errs = {
+        nameErr: nameErr,
+        unameErr: unameErr,
+        emailErr: emailErr,
+        numErr: numErr,
+        passErr: passErr
+    }
+    let falses = 0;
+    Object.keys(Errs).forEach(key => {
+        if(Errs[key]){
+            falses = falses + 1;
+        }
+    })
+    if (falses > 0){
+        res.render('register', {registerNav: true, globalwhatsnew: globalwhatsnewFetch, RegData: registerData, Errs: Errs, nullErr});    
+    }else{
+        registerData.password = Bcrypt.hashSync(password, 12);
+        
+        let userRegister = new registerDb(registerData).save((e, data) => {
+        if (e) {
+            console.log(e);
+        } else {
+            console.log("User Registered:\n\t" + data);
+            // res.render('dashboard', {dbNav: true, globalwhatsnew: globalwhatsnewFetch, UserName: username, Name: (fname + " " + lname), Email: email});
+            res.redirect("/login");
+        }
+
+        })
+    }  
+
+});
+
+app.get("/logout", function(req, res) {
+    req.session.reset();
+    res.redirect("/login");
+});
+
+app.get("*", async (req, res) => {
+    //GLOBALWHATSNEW FETCH
+    var globalwhatsnewFetch = await modules.fetchOne(globalwhatsnew);
+
+    res.render('404', {globalwhatsnew: globalwhatsnewFetch});
+});
+
+
+app.listen(port, ()=>{
+    console.log(`LISTENING ON http://localhost:${port}`);
+});
