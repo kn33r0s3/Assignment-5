@@ -174,6 +174,7 @@ const upload = multer({
             imgErr = 'Only image files i.e (png, jpg, jpeg, gif) are allowed!. So you better do things right next time!';
         }
         fs.readdir('./public/resources/', function(err,data){
+            if (err) {console.log(err)};
             console.log(data);
             for(var i=0; i<data.length; i++)
             {
