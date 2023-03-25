@@ -4,7 +4,7 @@ const bodyParser = require("body-parser");
 const multer = require('multer');
 const multerS3 = require('multer-s3');
 // const fs = require('fs');
-const fs = require('@cyclic.sh/s3fs')(cyclic-charming-fox-kilt-us-east-1);
+const fs = require('@cyclic.sh/s3fs')('cyclic-charming-fox-kilt-us-east-1');
 
 const clientSessions = require("client-sessions");
 const Bcrypt = require("bcryptjs");
