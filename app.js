@@ -146,24 +146,24 @@ app.engine('hbs', exphbs.engine({
 //multer
 var imgName;
 var imgErr;
-// const storage = multer.diskStorage({
-//     destination: (req, file, cb) => {
-//         cb(null, './public/resources');
-//     },
-//     filename: (req, file, cb) => {
-//         imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
-//         cb(null, imgName)
-//     }
-// });
-const storage = multerS3({
-    s3: s3,
-    bucket: 'cyclic-charming-fox-kilt-us-east-1/uploads',
-    acl: 'public-read', //comment this line if you not enable access object 
-    key: (req, file, cb) => {
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, './public/resources');
+    },
+    filename: (req, file, cb) => {
         imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
         cb(null, imgName)
     }
-})
+});
+// const storage = multerS3({
+//     s3: s3,
+//     bucket: 'cyclic-charming-fox-kilt-us-east-1/uploads',
+//     acl: 'public-read', //comment this line if you not enable access object 
+//     key: (req, file, cb) => {
+//         imgName= req.body.imagename + "." + file.mimetype.split('/')[1];
+//         cb(null, imgName)
+//     }
+// })
 
 const upload = multer({
     storage: storage,
